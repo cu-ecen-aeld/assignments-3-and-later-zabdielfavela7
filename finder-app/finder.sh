@@ -2,7 +2,7 @@
 
 DIR_PATH=$1
 STRING=$2
-#echo $DIR_PATH
+
 
 if [ $# -ne 2 ]
 then
