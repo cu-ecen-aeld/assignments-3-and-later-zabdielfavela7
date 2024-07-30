@@ -1,4 +1,5 @@
 #include "systemcalls.h"
+#include <stdlib.h>
 
 /**
  * @param cmd the command to execute with system()
@@ -9,15 +10,18 @@
 */
 bool do_system(const char *cmd)
 {
+    int ret;
 
-/*
- * TODO  add your code here
- *  Call the system() function with the command set in the cmd
- *   and return a boolean true if the system() call completed with success
- *   or false() if it returned a failure
-*/
+    ret = system(cmd);
 
-    return true;
+    if (ret == 0)
+    {
+        return true;
+    }
+    else
+    {
+        return false;
+    }
 }
 
 /**
