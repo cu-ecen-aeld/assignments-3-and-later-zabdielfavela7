@@ -1,5 +1,7 @@
 #include "systemcalls.h"
 #include <stdlib.h>
+#include <unistd.h>
+#include <sys/wait.h>
 
 /**
  * @param cmd the command to execute with system()
@@ -48,10 +50,10 @@ bool do_exec(int count, ...)
     {
         command[i] = va_arg(args, char *);
     }
+    
     command[count] = NULL;
-    // this line is to avoid a compile warning before your implementation is complete
-    // and may be removed
-    command[count] = command[count];
+
+    va_end(args);
 
 /*
  * TODO:
@@ -62,10 +64,30 @@ bool do_exec(int count, ...)
  *   as second argument to the execv() command.
  *
 */
+    int status;
 
-    va_end(args);
+    fflush(stdout);
+    int pid = fork();
 
+    if(pid == -1)
+    {
+        return false;
+    }
+    else
+    {
+        execv(command[0], &command[1]);
+    }
+ 
+    if (waitpid (pid, &status, 0) == -1)
+    {                 
+        return false;         
+    }    
+    else if (WIFEXITED (status))
+    {                
+        return WEXITSTATUS (status); 
+    }
     return true;
+    
 }
 
 /**
