@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <sys/wait.h>
+#include <fcntl.h>
 
 /**
  * @param cmd the command to execute with system()
@@ -110,7 +111,7 @@ bool do_exec_redirect(const char *outputfile, int count, ...)
     // and may be removed
     command[count] = command[count];
 
-
+    va_end(args);
 /*
  * TODO
  *   Call execv, but first using https://stackoverflow.com/a/13784315/1446624 as a refernce,
@@ -118,8 +119,47 @@ bool do_exec_redirect(const char *outputfile, int count, ...)
  *   The rest of the behaviour is same as do_exec()
  *
 */
+    fflush(stdout);
+    int pid = fork();
 
-    va_end(args);
+    if (pid == -1)
+    {
+        return false;
+    }
+    // child process
+    else if (pid == 0)
+    {
+        
+        int fd = open(outputfile, O_WRONLY | O_CREAT | O_TRUNC, 0644);
+        if (fd < 0)
+        {
+            exit(EXIT_FAILURE);
+        }
+
+        if (dup2(fd, STDOUT_FILENO) < 0)
+        {
+            close(fd);
+            exit(EXIT_FAILURE);
+        }
+
+        close(fd);
+
+        execv(command[0], command);
+        exit(EXIT_FAILURE);
+    }
+
+    int status;
+    // Parent process waits for the child to complete
+    if (waitpid(pid, &status, 0) == -1)
+    {
+        return false;
+    }
+    else if (WIFEXITED(status))
+    {
+        return WEXITSTATUS(status) == 0;
+    }
+
+    
 
     return true;
 }
