@@ -2,7 +2,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <sys/wait.h>
-
+#include <fcntl.h>
 /**
  * @param cmd the command to execute with system()
  * @return true if the command in @param cmd was executed
@@ -53,7 +53,7 @@ bool do_exec(int count, ...)
     
     command[count] = NULL;
 
-    va_end(args);
+    
 
 /*
  * TODO:
@@ -71,23 +71,38 @@ bool do_exec(int count, ...)
 
     if(pid == -1)
     {
+		// error forking
+		perror("fork failed");
         return false;
     }
-    else
+    else if (pid == 0)
     {
-        execv(command[0], &command[1]);
+		// child process
+        execv(command[0], command);
+
+		// if execv returns, it must've failed
+		perror("execv failed");
+		exit(1);
     }
- 
-    if (waitpid (pid, &status, 0) == -1)
-    {                 
-        return false;         
-    }    
-    else if (WIFEXITED (status))
-    {                
-        return WEXITSTATUS (status); 
-    }
-    return true;
-    
+	else
+	{
+		// parent process
+		// pid will be the child's pid
+
+		if (waitpid (pid, &status, 0) == -1)
+		{                 
+			perror("waitpid failed");
+			return false;         
+		}    
+		if (!WIFEXITED(status) || WEXITSTATUS(status) != 0) {
+            return false;
+        }
+		
+	}
+	
+	va_end(args);
+	return true;
+
 }
 
 /**
@@ -95,20 +110,21 @@ bool do_exec(int count, ...)
 *   This file will be closed at completion of the function call.
 * All other parameters, see do_exec above
 */
+
 bool do_exec_redirect(const char *outputfile, int count, ...)
 {
-    va_list args;
-    va_start(args, count);
-    char * command[count+1];
-    int i;
-    for(i=0; i<count; i++)
-    {
-        command[i] = va_arg(args, char *);
-    }
-    command[count] = NULL;
-    // this line is to avoid a compile warning before your implementation is complete
-    // and may be removed
-    command[count] = command[count];
+    	va_list args;
+    	va_start(args, count);
+    	char * command[count+1];
+    	int i;
+    	for(i=0; i<count; i++)
+    	{
+    	    command[i] = va_arg(args, char *);
+    	}
+    	command[count] = NULL;
+    	// this line is to avoid a compile warning before your implementation is complete
+    	// and may be removed
+    	command[count] = command[count];
 
 
 /*
@@ -118,8 +134,44 @@ bool do_exec_redirect(const char *outputfile, int count, ...)
  *   The rest of the behaviour is same as do_exec()
  *
 */
+	int pid;
+	int fd = open(outputfile, O_WRONLY|O_TRUNC|O_CREAT, 0644);
+	if (fd < 0) { perror("open"); abort(); }
+	fflush(stdout);
+	
+	
+	pid = fork();
+	
+	if(pid == -1)
+	{
+		perror("fork"); 
+		abort();
+	}
+	else if(pid == 0)
+	{
+		//child
+		if (dup2(fd, 1) < 0) { perror("dup2"); abort(); }
+		close(fd);
+		execv(command[0], command); perror("execvp"); abort();
 
-    va_end(args);
+		// if execv returns, it must've failed
+		perror("execv failed");
+		exit(1);
+	}
+	else
+	{
+	   	// Parent        
+		int status;
+		wait(&status);
+		if (WIFEXITED(status)) {
+			printf("Child process exited with status: %d\n", WEXITSTATUS(status));
+		} else {
+			printf("Child process exited abnormally\n");
+		}
+	}
+    	close(fd);
 
-    return true;
+    	va_end(args);
+
+    	return true;
 }
