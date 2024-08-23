@@ -97,7 +97,11 @@ make clean
 make CROSS_COMPILE=${CROSS_COMPILE}
 # TODO: Copy the finder related scripts and executables to the /home directory
 # on the target rootfs
+cp finder-test.sh finder.sh writer ${OUTDIR}/rootfs/home
 
 # TODO: Chown the root directory
+sudo chown root:root ${OUTDIR}/rootfs
 
 # TODO: Create initramfs.cpio.gz
+cd ${OUTDIR}/rootfs
+find . | cpio -o -H newc | gzip > ${OUTDIR}/initramfs.cpio.gz
